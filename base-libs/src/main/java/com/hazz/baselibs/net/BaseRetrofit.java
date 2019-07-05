@@ -4,6 +4,7 @@ import com.hazz.baselibs.app.AppConfig;
 import com.hazz.baselibs.app.BaseApplication;
 import com.hazz.baselibs.net.converter.GsonConverterBodyFactory;
 import com.hazz.baselibs.net.interceptor.CaheInterceptor;
+import com.hazz.baselibs.net.interceptor.MoreBaseUrlInterceptor;
 import com.hazz.baselibs.utils.cache.CacheManager;
 
 import java.io.File;
@@ -62,8 +63,8 @@ public class BaseRetrofit {
                     httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
 
                     //设置 请求的缓存的大小跟位置
-                    File cacheFile = new File(BaseApplication.getContext().getCacheDir(), "cache");
-                    Cache cache = new Cache(cacheFile, 1024 * 1024 * 50); //50Mb 缓存的大小
+//                    File cacheFile = new File(BaseApplication.getContext().getCacheDir(), "cache");
+//                    Cache cache = new Cache(cacheFile, 1024 * 1024 * 50); //50Mb 缓存的大小
 
                     client = new OkHttpClient
                             .Builder()
@@ -71,17 +72,16 @@ public class BaseRetrofit {
                             .addInterceptor(httpLoggingInterceptor) //日志,所有的请求响应
 //                            .addInterceptor(new HeaderInterceptor(getRequestHeader())) // token过滤
 //                            .addInterceptor(new ParameterInterceptor(getRequestParams()))  //公共参数添加
-                            .addInterceptor(new CaheInterceptor(BaseApplication.getContext()))
+//                            .addInterceptor(new CaheInterceptor(BaseApplication.getContext()))
+                            .addInterceptor(new MoreBaseUrlInterceptor())
                             //不加以下两行代码,https请求不到自签名的服务器
-                            .sslSocketFactory(createSSLSocketFactory())//创建一个证书对象
-                            .hostnameVerifier(new TrustAllHostnameVerifier())//校验名称,这个对象就是信任所有的主机,也就是信任所有https的请求
-                            .cache(cache)  //添加缓存
-
+//                            .sslSocketFactory(createSSLSocketFactory())//创建一个证书对象
+//                            .hostnameVerifier(new TrustAllHostnameVerifier())//校验名称,这个对象就是信任所有的主机,也就是信任所有https的请求
+//                            .cache(cache)  //添加缓存
                             .connectTimeout(15, TimeUnit.SECONDS)//连接超时时间
                             .readTimeout(15, TimeUnit.SECONDS)//读取超时时间
                             .writeTimeout(15, TimeUnit.SECONDS)//写入超时时间
                             .retryOnConnectionFailure(false)//连接不上是否重连,false不重连
-
                             .build();
 
                     // 获取retrofit的实例

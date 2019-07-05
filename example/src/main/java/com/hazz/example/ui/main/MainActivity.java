@@ -1,26 +1,34 @@
 package com.hazz.example.ui.main;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
-import android.widget.Button;
+import android.util.Log;
 import android.widget.FrameLayout;
-import android.widget.TextView;
 
 import com.flyco.tablayout.CommonTabLayout;
 import com.flyco.tablayout.listener.CustomTabEntity;
 import com.flyco.tablayout.listener.OnTabSelectListener;
 import com.hazz.baselibs.base.BaseMvpActivity;
+import com.hazz.baselibs.net.download.DownLoadManager;
+import com.hazz.baselibs.net.download.ProgressCallBack;
 import com.hazz.baselibs.utils.LogUtils;
 import com.hazz.example.R;
 import com.hazz.example.data.entity.TabEntity;
 import com.hazz.example.data.entity.TestNews;
-import com.hazz.baselibs.utils.ToastUtils;
 import com.hazz.example.ui.main.home.HomeFragment;
 import com.hazz.example.ui.main.mine.MineFragment;
 import com.hazz.example.ui.main.video.VideoFragment;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -88,7 +96,7 @@ public class MainActivity extends BaseMvpActivity<MainPresenter> implements Main
 
     @Override
     protected void initData() {
-
+        testDownload();
     }
 
     @Override
@@ -133,7 +141,7 @@ public class MainActivity extends BaseMvpActivity<MainPresenter> implements Main
 
         tabLayout.showDot(0);
 
-        tabLayout.showMsg(1,100);
+        tabLayout.showMsg(1, 100);
     }
 
     /**
@@ -221,5 +229,85 @@ public class MainActivity extends BaseMvpActivity<MainPresenter> implements Main
         super.onResume();
     }
 
+    public void testDownload(){
+        String dir = Environment.getExternalStorageDirectory() + File.separator + "Apk" + File.separator;
+        String url = "https://zongsapp-update.oss-cn-hangzhou.aliyuncs.com/20190621/%E5%AE%97%E7%9B%9B%E5%95%A4%E9%85%92%E6%9C%BA_V1.0.4_06_30_release.apk";
+        String fileName = url.substring(url.lastIndexOf("/") + 1);
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        DownLoadManager.getInstance().load(url, new ProgressCallBack(dir,fileName) {
+            @Override
+            public void onSuccess(Object o) {
+                System.out.println("下载成功！");
+                System.out.println(dir + fileName);
+                progressDialog.setMessage("下载成功！");
+                progressDialog.dismiss();
+//                install(dir + fileName);
+            }
+
+            @Override
+            public void progress(long progress, long total) {
+                int progressPercent = (int) (progress / total * 100);
+                System.out.println(progress + "/" + total + "=" + progressPercent);
+                progressDialog.setMessage("下载进度：" + progressPercent + "%");
+                progressDialog.show();
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                System.out.println("下载失败！");
+                progressDialog.dismiss();
+            }
+        });
+    }
+
+    /**
+     * 静默安装
+     *
+     * @param apkPath
+     * @return
+     */
+    public boolean install(String apkPath) {
+        boolean result = false;
+        DataOutputStream dataOutputStream = null;
+        BufferedReader errorStream = null;
+        try {
+            // 申请su权限
+            Process process = Runtime.getRuntime().exec("su");
+            dataOutputStream = new DataOutputStream(process.getOutputStream());
+            // 执行pm install命令
+            String command = "pm install -r " + apkPath + "\n";
+            dataOutputStream.write(command.getBytes(Charset.forName("utf-8")));
+            dataOutputStream.flush();
+            dataOutputStream.writeBytes("exit\n");
+            dataOutputStream.flush();
+            process.waitFor();
+            errorStream = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String msg = "";
+            String line;
+            // 读取命令的执行结果
+            while ((line = errorStream.readLine()) != null) {
+                msg += line;
+            }
+            Log.d("TAG", "install msg is " + msg);
+            // 如果执行结果中包含Failure字样就认为是安装失败，否则就认为安装成功
+            if (!msg.contains("Failure")) {
+                result = true;
+            }
+        } catch (Exception e) {
+            Log.e("TAG", e.getMessage(), e);
+        } finally {
+            try {
+                if (dataOutputStream != null) {
+                    dataOutputStream.close();
+                }
+                if (errorStream != null) {
+                    errorStream.close();
+                }
+            } catch (IOException e) {
+                Log.e("TAG", e.getMessage(), e);
+            }
+        }
+        return result;
+    }
 
 }
